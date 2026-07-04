@@ -22,7 +22,7 @@ significant part of the day.
 This is *not* an OpenAPI generator: it produces a plain, reusable JSON Schema
 focused on message mappings, not endpoints.
 
-**Everything runs locally and is purely algorithmic (no LLMs, no network calls),
+**Everything runs locally and is purely algorithmic (no LLMs or external calls),
 so confidential payloads never leave your machine and results are deterministic.**
 
 ## Features
