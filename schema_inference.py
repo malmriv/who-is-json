@@ -1,13 +1,22 @@
-"""Pure, deterministic JSON -> JSON Schema inference.
+"""Pure, deterministic JSON -> OpenAPI 3.0 schema inference.
 
 No LLMs, no network calls: payloads never leave the machine.
+
+The output is a minimal OpenAPI 3.0.0 document (the format SAP Integration
+Suite actually accepts), not a standalone JSON Schema draft file. Each action
+becomes a path whose request body references an inferred schema under
+``components/schemas``. In Integration Suite the request/response distinction
+is irrelevant for mappings: you simply pick whichever message structure fits
+your purpose, so every action is modelled as a request.
 
 Design decisions (deliberate, for integration/mapping use cases):
 - Nothing is marked as ``required`` unless the user opts in, and even then only
   fields present in *all* provided samples of an action are marked required.
 - ``additionalProperties`` is never set to ``false``.
-- Types are inferred from the actual JSON values (string/boolean/integer/number/
-  object/array/null) and merged across samples (e.g. ``["string", "null"]``).
+- Types are inferred from the actual JSON values and merged across samples.
+  OpenAPI 3.0 does not allow union types (``["string", "null"]``), so null is
+  expressed as ``nullable: true`` and mixed-type fields are left unconstrained
+  (with a warning).
 """
 
 import re
@@ -16,11 +25,6 @@ ISO_DATETIME_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}[Tt ]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:?\d{2})?$"
 )
 ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
-DRAFT_URIS = {
-    "draft-04": "http://json-schema.org/draft-04/schema#",
-    "draft-07": "http://json-schema.org/draft-07/schema#",
-}
 
 
 def infer_node(value, options, warnings, path):
@@ -97,16 +101,25 @@ def merge_nodes(a, b):
 
 
 def render_node(node, options, warnings, path):
-    """Convert an internal node into a plain JSON Schema dict."""
+    """Convert an internal node into an OpenAPI 3.0-flavoured schema dict."""
     types = set(node["type"])
-    if types == {"null"}:
+    nullable = "null" in types
+    types.discard("null")
+    if not types:
         # A field that was always null gives no type information; default to
-        # nullable string rather than a useless pure-null type.
+        # a nullable string rather than leaving it typeless.
         warnings.append(("null_only", path))
-        types = {"string", "null"}
+        types = {"string"}
 
     schema = {}
-    schema["type"] = sorted(types)[0] if len(types) == 1 else sorted(types)
+    if len(types) == 1:
+        schema["type"] = next(iter(types))
+    else:
+        # OpenAPI 3.0 cannot express union types; leave the field
+        # unconstrained and let the user decide.
+        warnings.append(("mixed_types", path))
+    if nullable:
+        schema["nullable"] = True
     if node.get("format"):
         schema["format"] = node["format"]
     if "properties" in node:
@@ -134,16 +147,54 @@ def build_definition(samples, options, warnings, base_path):
     return render_node(node, options, warnings, base_path)
 
 
-def build_root_schema(definitions, draft, title):
-    """Combine per-action definitions into a single reusable schema file."""
+def build_openapi_document(actions, title, description):
+    """Combine per-action schemas into a minimal OpenAPI 3.0.0 document.
+
+    ``actions`` maps a sanitized name to ``{"schema": ..., "verb": ...,
+    "summary": ...}``. Every action is modelled as the request body of its own
+    path; the 200 response references the same schema to keep the document
+    valid (in Integration Suite you just pick the structure you need).
+    """
+    paths = {}
+    schemas = {}
+    for name, action in actions.items():
+        schemas[name] = action["schema"]
+        media = {
+            "content": {
+                "application/json": {
+                    "schema": {"$ref": f"#/components/schemas/{name}"}
+                }
+            }
+        }
+        paths[f"/{name}"] = {
+            action["verb"].lower(): {
+                "summary": action["summary"],
+                "tags": [name],
+                "requestBody": {"required": True, **media},
+                "responses": {
+                    "200": {"description": "Successful response", **media}
+                },
+            }
+        }
     return {
-        "$schema": DRAFT_URIS[draft],
-        "title": title,
-        "type": "object",
-        "properties": {
-            name: {"$ref": f"#/definitions/{name}"} for name in definitions
+        "openapi": "3.0.0",
+        "info": {
+            "title": title,
+            "version": "1.0.0",
+            "description": description,
         },
-        "definitions": definitions,
+        "x-sap-api-type": "REST",
+        "servers": [
+            {
+                "url": "https://{host}:{port}/http/YourEndpointHere",
+                "variables": {
+                    "host": {"default": "The URL of your runtime here"},
+                    "port": {"default": "443"},
+                },
+            }
+        ],
+        "paths": paths,
+        "components": {"schemas": schemas},
     }
 
 

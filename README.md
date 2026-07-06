@@ -13,28 +13,30 @@ automation for something that would take me half as long to do manually.)
   <em><a href="https://xkcd.com/1319/">"Automation"</a> by Randall Munroe (xkcd), licensed under <a href="https://creativecommons.org/licenses/by-nc/2.5/">CC BY-NC 2.5</a>.</em>
 </p>
 
-Generate a **JSON Schema** from one or more sample JSON messages, ready to use in
-**SAP Integration Suite** message mappings (or any other platform that consumes
-JSON Schema). It solves a common pain: there is usually no way to obtain a JSON
-schema for a given payload, and hand-writing one for every mapping wastes a
+Generate message schemas from one or more sample JSON messages, packaged as a
+minimal **OpenAPI 3.0 document** in the exact format **SAP Integration Suite**
+accepts. It solves a common pain: there is usually no way to obtain a schema
+for a given payload, and hand-writing one for every mapping wastes a
 significant part of the day.
 
-This is *not* an OpenAPI generator: it produces a plain, reusable JSON Schema
-focused on message mappings, not endpoints.
+This is *not* a full-blown OpenAPI generator: the document is just the thin
+wrapper Integration Suite requires around the message schemas. In IS the
+request/response distinction is irrelevant for mappings — you simply pick
+whichever message structure fits your purpose — so every action is modelled
+as a request.
 
 **Everything runs locally and is purely algorithmic (no LLMs or external calls),
 so confidential payloads never leave your machine and results are deterministic.**
 
 ## Features
 
-- **Multiple actions in a single schema file.** Each action (e.g. `CreateOrder`,
-  `UpdateOrder`) has a name and an HTTP verb (metadata only, kept as the
-  definition's `description`) and becomes an entry under `definitions`, exposed
-  at the root via `$ref`. One schema file can then be reused across as many
-  mappings as needed.
+- **Multiple actions in a single document.** Each action (e.g. `CreateOrder`,
+  `UpdateOrder`) has a name and an HTTP verb and becomes a path in the document,
+  with its inferred schema under `components/schemas`. One file can then be
+  reused across as many mappings as needed.
 - **Multiple samples per action.** Samples of the same message are merged:
   fields seen in *any* sample are included, and types are widened
-  (e.g. `"type": ["string", "null"]`, `integer` + `number` → `number`).
+  (e.g. `nullable: true`, `integer` + `number` → `number`).
 - **Loose cardinality by default.** No field is marked `required` and
   `additionalProperties` is never set to `false`, so the schema won't reject a
   valid-but-sparse message. An opt-in setting marks fields present in *all*
@@ -43,9 +45,7 @@ so confidential payloads never leave your machine and results are deterministic.
   nulls are inferred from the actual values. Optional helpers: detect ISO 8601
   date/date-time formats, or widen all integers to `number`.
 - **Warnings** for fields whose type can't be known (always-`null` values,
-  always-empty arrays) so you can adjust them consciously.
-- **Draft selector.** `draft-04` by default (the safest choice for SAP
-  Integration Suite), `draft-07` available.
+  always-empty arrays, mixed types) so you can adjust them consciously.
 - **Bilingual UI.** One-click toggle between English and Spanish.
 
 ## Run locally

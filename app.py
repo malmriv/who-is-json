@@ -5,7 +5,7 @@ import streamlit as st
 from i18n import t
 from schema_inference import (
     build_definition,
-    build_root_schema,
+    build_openapi_document,
     sanitize_name,
 )
 
@@ -37,10 +37,11 @@ with st.sidebar:
         st.rerun()
 
     st.header(_("settings"))
-    draft = st.selectbox(
-        _("draft_label"), ["draft-04", "draft-07"], index=0, help=_("draft_help")
-    )
     schema_title = st.text_input(_("schema_title_label"), value="IntegrationMessages")
+    service_description = st.text_input(
+        _("service_description_label"),
+        value=_("service_description_default"),
+    )
     require_common = st.checkbox(
         _("require_common"), value=False, help=_("require_common_help")
     )
@@ -125,14 +126,14 @@ if st.button(_("generate"), type="primary"):
     errors = []
     warnings = []  # translated strings
     infer_warnings = []  # (kind, path) tuples from the inference engine
-    definitions = {}
+    doc_actions = {}
 
     for idx, action in enumerate(st.session_state.actions, start=1):
         aid = action["id"]
         raw_name = st.session_state.get(f"name_{aid}", "").strip() or f"Action{idx}"
         verb = st.session_state.get(f"verb_{aid}", "POST")
         name = sanitize_name(raw_name, f"Action{idx}")
-        if name in definitions:
+        if name in doc_actions:
             renamed = f"{name}_{idx}"
             warnings.append(_("warn_duplicate_name", name=name, renamed=renamed))
             name = renamed
@@ -151,24 +152,30 @@ if st.button(_("generate"), type="primary"):
             warnings.append(_("warn_action_skipped", action=raw_name))
             continue
 
-        definition = build_definition(samples, options, infer_warnings, name)
-        definition["description"] = _("verb_description", verb=verb, name=raw_name)
-        definitions[name] = definition
+        schema = build_definition(samples, options, infer_warnings, name)
+        doc_actions[name] = {
+            "schema": schema,
+            "verb": verb,
+            "summary": f"{verb} — {raw_name}",
+        }
 
     for kind, path in infer_warnings:
         if kind == "null_only":
             warnings.append(_("warn_null_only", path=path))
         elif kind == "empty_array":
             warnings.append(_("warn_empty_array", path=path))
+        elif kind == "mixed_types":
+            warnings.append(_("warn_mixed_types", path=path))
 
     for error in errors:
         st.error(error)
 
-    if definitions:
-        schema = build_root_schema(
-            definitions, draft, schema_title.strip() or "IntegrationMessages"
+    if doc_actions:
+        title = schema_title.strip() or "IntegrationMessages"
+        document = build_openapi_document(
+            doc_actions, title, service_description.strip()
         )
-        schema_text = json.dumps(schema, indent=2, ensure_ascii=False)
+        document_text = json.dumps(document, indent=2, ensure_ascii=False)
 
         if warnings:
             with st.expander(f"⚠️ {_('warnings_header')} ({len(warnings)})"):
@@ -178,10 +185,10 @@ if st.button(_("generate"), type="primary"):
         st.subheader(_("output_header"))
         st.download_button(
             _("download"),
-            data=schema_text,
-            file_name=f"{schema.get('title', 'schema')}.schema.json",
+            data=document_text,
+            file_name=f"{title}.json",
             mime="application/json",
         )
-        st.code(schema_text, language="json")
+        st.code(document_text, language="json")
     elif not errors:
         st.error(_("err_no_actions"))

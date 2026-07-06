@@ -19,25 +19,28 @@ STRINGS = {
     },
     "app_caption": {
         "en": (
-            "Paste one or more sample JSON messages and get a single JSON Schema, "
-            "ready to use in SAP Integration Suite message mappings (or any other "
-            "JSON Schema-aware platform). Everything runs locally: your payloads "
+            "Paste one or more sample JSON messages and get a single OpenAPI "
+            "document with all your message schemas, in the exact format SAP "
+            "Integration Suite accepts. Everything runs locally: your payloads "
             "never leave this machine."
         ),
         "es": (
-            "Pega uno o varios mensajes JSON de ejemplo y obtén un único JSON Schema, "
-            "listo para usar en los message mappings de SAP Integration Suite (o en "
-            "cualquier otra plataforma compatible con JSON Schema). Todo se ejecuta en "
-            "local: tus mensajes nunca salen de esta máquina."
+            "Pega uno o varios mensajes JSON de ejemplo y obtén un único documento "
+            "OpenAPI con todos los esquemas de tus mensajes, en el formato exacto "
+            "que acepta SAP Integration Suite. Todo se ejecuta en local: tus "
+            "mensajes nunca salen de esta máquina."
         ),
     },
     "settings": {"en": "Settings", "es": "Configuración"},
-    "draft_label": {"en": "JSON Schema draft", "es": "Versión (draft) de JSON Schema"},
-    "draft_help": {
-        "en": "draft-04 is the safest choice for SAP Integration Suite message mappings.",
-        "es": "draft-04 es la opción más segura para los message mappings de SAP Integration Suite.",
+    "schema_title_label": {"en": "Service title", "es": "Título del servicio"},
+    "service_description_label": {
+        "en": "Service description",
+        "es": "Descripción del servicio",
     },
-    "schema_title_label": {"en": "Schema title", "es": "Título del esquema"},
+    "service_description_default": {
+        "en": "The description of your REST service goes here",
+        "es": "Aquí va la descripción de tu servicio REST",
+    },
     "require_common": {
         "en": "Mark fields present in ALL samples as required",
         "es": "Marcar como obligatorios los campos presentes en TODAS las muestras",
@@ -78,14 +81,18 @@ STRINGS = {
     "actions_header": {"en": "Actions", "es": "Acciones"},
     "actions_caption": {
         "en": (
-            "Each action becomes a definition in the schema (one per mapping). "
-            "Add several samples to the same action to merge them: fields seen in "
-            "any sample are included, and types are widened (e.g. string + null)."
+            "Each action becomes a path in the document with its own message "
+            "schema (in Integration Suite you just pick the structure you need; "
+            "everything is modelled as a request). Add several samples to the "
+            "same action to merge them: fields seen in any sample are included, "
+            "and types are widened (e.g. nullable string)."
         ),
         "es": (
-            "Cada acción se convierte en una definición del esquema (una por mapping). "
-            "Añade varias muestras a la misma acción para fusionarlas: se incluyen los "
-            "campos vistos en cualquier muestra y los tipos se amplían (p. ej. string + null)."
+            "Cada acción se convierte en una ruta del documento con su propio "
+            "esquema de mensaje (en Integration Suite simplemente eliges la "
+            "estructura que necesitas; todo se modela como request). Añade varias "
+            "muestras a la misma acción para fusionarlas: se incluyen los campos "
+            "vistos en cualquier muestra y los tipos se amplían (p. ej. string anulable)."
         ),
     },
     "action_title": {"en": "Action {n}", "es": "Acción {n}"},
@@ -101,8 +108,8 @@ STRINGS = {
     "remove_sample": {"en": "➖ Remove last sample", "es": "➖ Quitar última muestra"},
     "add_action": {"en": "➕ Add action", "es": "➕ Añadir acción"},
     "remove_action": {"en": "🗑️ Remove this action", "es": "🗑️ Eliminar esta acción"},
-    "generate": {"en": "⚙️ Generate JSON Schema", "es": "⚙️ Generar JSON Schema"},
-    "output_header": {"en": "Generated schema", "es": "Esquema generado"},
+    "generate": {"en": "⚙️ Generate schema", "es": "⚙️ Generar esquema"},
+    "output_header": {"en": "Generated document", "es": "Documento generado"},
     "download": {"en": "⬇️ Download schema", "es": "⬇️ Descargar esquema"},
     "warnings_header": {"en": "Warnings", "es": "Avisos"},
     "err_parse": {
@@ -119,12 +126,22 @@ STRINGS = {
     },
     "warn_null_only": {
         "en": (
-            "'{path}' was always null in the samples; its type defaulted to "
-            "[string, null]. Adjust it in the output if needed."
+            "'{path}' was always null in the samples; its type defaulted to a "
+            "nullable string. Adjust it in the output if needed."
         ),
         "es": (
             "'{path}' siempre era null en las muestras; su tipo se ha fijado a "
-            "[string, null]. Ajústalo en el resultado si es necesario."
+            "string anulable. Ajústalo en el resultado si es necesario."
+        ),
+    },
+    "warn_mixed_types": {
+        "en": (
+            "'{path}' had mixed types across the samples, which OpenAPI 3.0 "
+            "cannot express; the field was left without a type constraint."
+        ),
+        "es": (
+            "'{path}' tenía tipos distintos entre las muestras, algo que OpenAPI "
+            "3.0 no puede expresar; el campo se ha dejado sin restricción de tipo."
         ),
     },
     "warn_empty_array": {
@@ -140,10 +157,6 @@ STRINGS = {
     "warn_duplicate_name": {
         "en": "Duplicate action name '{name}' renamed to '{renamed}'.",
         "es": "Nombre de acción duplicado '{name}', renombrado a '{renamed}'.",
-    },
-    "verb_description": {
-        "en": "{verb} — {name}",
-        "es": "{verb} — {name}",
     },
 }
 
