@@ -2,7 +2,7 @@
 
 > *"who is json?" — every vibecoder, at some point.*
 
-(The name is a joke: this particular tool was 100% vibecoded to solve a
+(The name is a joke: **this particular tool was almost 100% vibecoded** to solve a
 recurring problem; I see no benefit in spending hours of
 [yak-shaving](https://en.wiktionary.org/wiki/yak_shaving) to hand-craft an
 automation for something that would take me half as long to do manually.)
