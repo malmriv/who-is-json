@@ -152,28 +152,28 @@ def build_openapi_document(actions, title, description):
 
     ``actions`` maps a sanitized name to ``{"schema": ..., "verb": ...,
     "summary": ...}``. Every action is modelled as the request body of its own
-    path; the 200 response references the same schema to keep the document
-    valid (in Integration Suite you just pick the structure you need).
+    path. The 200 response carries no content: OpenAPI 3.0 requires the
+    ``responses`` key to be present, but leaving it schema-less means the
+    request is the only message structure in the document (no duplicates to
+    choose from in Integration Suite).
     """
     paths = {}
     schemas = {}
     for name, action in actions.items():
         schemas[name] = action["schema"]
-        media = {
-            "content": {
-                "application/json": {
-                    "schema": {"$ref": f"#/components/schemas/{name}"}
-                }
-            }
-        }
         paths[f"/{name}"] = {
             action["verb"].lower(): {
                 "summary": action["summary"],
                 "tags": [name],
-                "requestBody": {"required": True, **media},
-                "responses": {
-                    "200": {"description": "Successful response", **media}
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {"$ref": f"#/components/schemas/{name}"}
+                        }
+                    },
                 },
+                "responses": {"200": {"description": "Successful response"}},
             }
         }
     return {
